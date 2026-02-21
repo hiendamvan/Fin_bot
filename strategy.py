@@ -1,6 +1,6 @@
 import numpy as np
 
-def generate_full_strategy(df):
+def generate_strategy(df):
 
     df = df.copy()
 
@@ -96,19 +96,30 @@ def generate_full_strategy(df):
     # =========================
     # 7️⃣ Enforce alternating Buy/Sell
     # =========================
-    position = 0
+    # =========================
+# 7️⃣ Enforce Buy-first + alternating Buy/Sell
+# =========================
+    position = 0  # 0 = không nắm giữ, 1 = đang nắm giữ
     final_signals = []
+
     for sig in df["Signal"]:
-            if sig == 1 and position == 0:
-                final_signals.append(1)
-                position = 1
+        if sig == 1 and position == 0:
+            # Chỉ mua khi chưa có vị thế
+            final_signals.append(1)
+            position = 1
 
-            elif sig == -1 and position == 1:
-                final_signals.append(-1)
-                position = 0
+        elif sig == -1 and position == 1:
+            # Chỉ bán khi đang nắm giữ
+            final_signals.append(-1)
+            position = 0
 
-            else:
-                final_signals.append(0)
+        else:
+            # Không làm gì nếu signal không phù hợp với trạng thái
+            final_signals.append(0)
+
+    # Đảm bảo lệnh đầu tiên là Buy
+    if final_signals[0] == -1:
+        final_signals[0] = 0
 
     df["Signal"] = final_signals
 

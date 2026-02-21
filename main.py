@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from vnstock import Quote
-from strategy import generate_full_strategy
+from strategy import generate_strategy
 from plot_chart import plot_signals
 from test import professional_backtest
 
@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     stock_lists = ["MBB", "STB", "VCI", "SSI", "PVD", "BSR","OIL", "VGI", "VTP", "VNM", "VGC"]
 
-    start_date = "2023-01-01"
+    start_date = "2025-01-01"
     end_date = "2026-02-20"
 
     all_metrics = []
@@ -38,7 +38,7 @@ if __name__ == "__main__":
                 continue
 
             # ===== 3️⃣ Strategy =====
-            df = generate_full_strategy(df)
+            df = generate_strategy(df)
 
             # ===== 4️⃣ Plot =====
             plot_signals(df, output_dir, stock_name)

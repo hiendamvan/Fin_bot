@@ -1,75 +1,86 @@
-from vnstock import Quote 
-from strategy import generate_full_strategy
-import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def professional_backtest(df, plot_equity=True):
     """
-    Backtest chuyên nghiệp dựa trên cột:
-    - close
-    - Signal (1 = Buy, -1 = Sell)
-
-    Trả về:
-    - metrics dict
-    - trades dataframe
+    Backtest chuyên nghiệp, Buy-first, long-only.
+    Nếu lệnh cuối cùng là Buy chưa khớp, tự động Sell tại ngày cuối cùng.
+    
+    Trả về: metrics dict + trades DataFrame
     """
-
     df = df.copy()
+    trades_list = []
+
+    position = 0  # 0 = không nắm giữ, 1 = đang nắm giữ
+    equity_val = 1.0
+
+    buy_price = 0
+    buy_time = None
+
+    for idx, row in df.iterrows():
+        sig = row["Signal"]
+        price = row["close"]
+        time = row["time"]
+
+        if sig == 1 and position == 0:
+            # Mua
+            buy_price = price
+            buy_time = time
+            position = 1
+
+        elif sig == -1 and position == 1:
+            # Bán
+            sell_price = price
+            sell_time = time
+            ret = sell_price / buy_price
+            equity_val *= ret
+
+            trades_list.append({
+                "Buy Time": buy_time,
+                "Buy Price": buy_price,
+                "Sell Time": sell_time,
+                "Sell Price": sell_price,
+                "Return": ret,
+                "Return %": (ret - 1) * 100,
+                "Equity": equity_val
+            })
+            position = 0
+
+    # Nếu lệnh cuối cùng vẫn là Buy, sell tại ngày cuối cùng
+    if position == 1:
+        sell_price = df["close"].iloc[-1]
+        sell_time = df["time"].iloc[-1]
+        ret = sell_price / buy_price
+        equity_val *= ret
+
+        trades_list.append({
+            "Buy Time": buy_time,
+            "Buy Price": buy_price,
+            "Sell Time": sell_time,
+            "Sell Price": sell_price,
+            "Return": ret,
+            "Return %": (ret - 1) * 100,
+            "Equity": equity_val
+        })
+        position = 0
+
+    trades = pd.DataFrame(trades_list)
 
     # =========================
-    # 1️⃣ Lấy điểm vào / ra
+    # Metrics
     # =========================
-    buys = df[df["Signal"] == 1][["time", "close"]].copy()
-    sells = df[df["Signal"] == -1][["time", "close"]].copy()
+    if len(trades) > 0:
+        total_return = trades["Return"].prod() - 1
+        win_rate = (trades["Return"] > 1).mean()
+        avg_return = trades["Return %"].mean()
+        max_drawdown = (trades["Equity"] / trades["Equity"].cummax() - 1).min()
+    else:
+        total_return = 0
+        win_rate = 0
+        avg_return = 0
+        max_drawdown = 0
 
-    buys.reset_index(drop=True, inplace=True)
-    sells.reset_index(drop=True, inplace=True)
-
-    # Nếu buy nhiều hơn sell → dùng giá cuối
-    if len(buys) > len(sells):
-        last_row = df.iloc[-1]
-        sells = pd.concat([
-            sells,
-            pd.DataFrame([{
-                "time": last_row["time"],
-                "close": last_row["close"]
-            }])
-        ], ignore_index=True)
-
-    # Cắt cho bằng nhau
-    n = min(len(buys), len(sells))
-    buys = buys.iloc[:n]
-    sells = sells.iloc[:n]
-
-    # =========================
-    # 2️⃣ Tính return từng trade
-    # =========================
-    trades = pd.DataFrame({
-        "Buy Time": buys["time"],
-        "Buy Price": buys["close"],
-        "Sell Time": sells["time"],
-        "Sell Price": sells["close"],
-    })
-
-    trades["Return"] = sells["close"].values / buys["close"].values
-    trades["Return %"] = (trades["Return"] - 1) * 100
-
-    # =========================
-    # 3️⃣ Metrics
-    # =========================
-    total_return = trades["Return"].prod() - 1
-    win_rate = (trades["Return"] > 1).mean()
-    avg_return = trades["Return %"].mean()
-
-    # Equity curve
-    trades["Equity"] = trades["Return"].cumprod()
-
-    # Max Drawdown
-    rolling_max = trades["Equity"].cummax()
-    drawdown = trades["Equity"] / rolling_max - 1
-    max_drawdown = drawdown.min()
-
-    # Buy & Hold
     buy_hold_return = df["close"].iloc[-1] / df["close"].iloc[0] - 1
 
     metrics = {
@@ -82,13 +93,13 @@ def professional_backtest(df, plot_equity=True):
     }
 
     # =========================
-    # 4️⃣ Plot equity
+    # Plot equity
     # =========================
     if plot_equity and len(trades) > 0:
         plt.figure(figsize=(12,6))
-        plt.plot(trades["Sell Time"], trades["Equity"])
+        plt.plot(trades["Sell Time"], trades["Equity"], marker='o')
         plt.title("Equity Curve")
-        plt.xlabel("Time")
+        plt.xlabel("Sell Time")
         plt.ylabel("Equity (Compounded)")
         plt.grid()
         plt.tight_layout()
