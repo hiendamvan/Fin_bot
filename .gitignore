@@ -1,3 +1,4 @@
 fin_env/ 
-
+__pycache__/
+output/
 *.png 

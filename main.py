@@ -1,52 +1,88 @@
-from vnstock import Quote 
-from utils import generate_full_strategy
-import matplotlib.pyplot as plt
-quote = Quote(symbol='PVD', source='VCI')
+import os
+import pandas as pd
+from vnstock import Quote
+from strategy import generate_full_strategy
+from plot_chart import plot_signals
+from test import professional_backtest
 
-# Hoặc lấy theo khoảng thời gian cụ thể
-df = quote.history(start='2025-01-01', end='2026-02-20', interval="1D")
 
-df = generate_full_strategy(df)
+if __name__ == "__main__":
 
-# ===== VẼ BIỂU ĐỒ =====
-plt.figure(figsize=(14,7))
+    stock_lists = ["MBB", "STB", "VCI", "SSI", "PVD", "BSR","OIL", "VGI", "VTP", "VNM", "VGC"]
 
-# Giá đóng cửa
-plt.plot(df["time"], df["close"], label="Close Price")
+    start_date = "2023-01-01"
+    end_date = "2026-02-20"
 
-# MA50
-plt.plot(df["time"], df["MA50"], label="MA50")
+    all_metrics = []
 
-add_signals = df[df["Signal"] == 2]
+    # Tạo thư mục chung
+    base_output_dir = "output"
+    os.makedirs(base_output_dir, exist_ok=True)
 
-plt.scatter(add_signals["time"],
-            add_signals["close"],
-            marker="o",
-            s=80)
+    for stock_name in stock_lists:
+        print(f"\n===== ĐANG BACKTEST {stock_name} =====")
 
-# BUY
-buy_signals = df[df["Signal"] == 1]
-plt.scatter(buy_signals["time"],
-            buy_signals["close"],
-            marker="^",
-            s=120)
+        try:
+            # ===== 1️⃣ Tạo thư mục riêng =====
+            output_dir = os.path.join(base_output_dir, stock_name)
+            os.makedirs(output_dir, exist_ok=True)
 
-# SELL
-sell_signals = df[df["Signal"] == -1]
-plt.scatter(sell_signals["time"],
-            sell_signals["close"],
-            marker="v",
-            s=120)
+            # ===== 2️⃣ Lấy dữ liệu =====
+            quote = Quote(symbol=stock_name, source='VCI')
+            df = quote.history(start=start_date,
+                               end=end_date,
+                               interval="1D")
 
-plt.title("PVD - MA50 Trading Signals")
-plt.xlabel("Time")
-plt.ylabel("Price")
-plt.legend()
-plt.grid()
+            if df is None or len(df) < 100:
+                print(f"{stock_name}: Không đủ dữ liệu")
+                continue
 
-# ===== SAVE IMAGE =====
-plt.tight_layout()
-plt.savefig("PVD_MA50_signals.png", dpi=300)
-plt.close()
+            # ===== 3️⃣ Strategy =====
+            df = generate_full_strategy(df)
 
-print("Đã lưu biểu đồ vào file PVD_MA50_signals.png")
+            # ===== 4️⃣ Plot =====
+            plot_signals(df, output_dir, stock_name)
+
+            # ===== 5️⃣ Backtest =====
+            metrics, trades = professional_backtest(df, plot_equity=True)
+
+            # ===== 6️⃣ Lưu trades =====
+            trades.to_csv(
+                os.path.join(output_dir,
+                             f"{stock_name}_trades.csv"),
+                index=False
+            )
+
+            # ===== 7️⃣ Gộp metrics =====
+            metrics["Stock"] = stock_name
+            all_metrics.append(metrics)
+
+            print(f"{stock_name} DONE")
+
+        except Exception as e:
+            print(f"Lỗi với {stock_name}: {e}")
+
+    # =========================
+    # 8️⃣ Lưu metrics chung CSV
+    # =========================
+    if len(all_metrics) > 0:
+        summary_df = pd.DataFrame(all_metrics)
+
+        summary_df = summary_df.sort_values(
+            by="Total Return %",
+            ascending=False
+        )
+
+        summary_df.to_csv(
+            os.path.join(base_output_dir,
+                         "summary_backtest.csv"),
+            index=False
+        )
+
+        print("\n===== BẢNG XẾP HẠNG =====")
+        print(summary_df)
+
+        print("\nĐã lưu file: output/summary_backtest.csv")
+
+    else:
+        print("Không có dữ liệu để tổng hợp.")
