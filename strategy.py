@@ -1,3 +1,20 @@
+'''
+1. Điều kiện để mua: đạt ít nhất 4/6 tín hiệu mua và không có tín hiệu bán nào.
+- MA50 cắt lên 
+- Đường MA50 dốc lên so với 5 ngày trước 
+- Breakout: giá vượt đỉnh của 20 ngày trước 
+- Volume breakout: volume > 1.2 * MA20 và giá tăng so với hôm trước
+- RSI > 50 và < 70 (vừa có động lượng tăng nhưng chưa quá mua)
+- ATR > ATR trung bình 20 ngày (thị trường có biến động đủ lớn)
+2. Điều kiện để bán: có ít nhất 2/6 tín hiệu bán hoặc tất cả tín hiệu mua đều mất hiệu lực.
+- MA50 cắt xuống 
+- Giá đóng cửa thấp xuống dưới đáy 20 ngày trước 
+- Đường 50 bẻ cong đi xuống 
+- Volume breakout: volume > 1.2 * MA20 và giá giảm so với hôm trước
+- RSI < 50 và > 30 (động lượng giảm nhưng chưa quá bán)
+
+'''
+
 import numpy as np
 
 def generate_strategy(df):

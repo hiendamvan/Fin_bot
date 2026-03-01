@@ -8,15 +8,15 @@ from test import professional_backtest
 
 if __name__ == "__main__":
 
-    stock_lists = ["MBB", "STB", "VCI", "SSI", "PVD", "BSR","OIL", "VGI", "VTP", "VNM", "VGC"]
+    stock_lists = ["MBB", "STB", "VCI", "SSI", "PVD", "BSR","OIL", "PVT", "DPM", "VNM"]
 
-    start_date = "2025-01-01"
-    end_date = "2026-02-20"
+    start_date = "2025-06-01"
+    end_date = "2026-02-28"
 
     all_metrics = []
 
     # Tạo thư mục chung
-    base_output_dir = "output"
+    base_output_dir = "output/strategy"
     os.makedirs(base_output_dir, exist_ok=True)
 
     for stock_name in stock_lists:

@@ -92,19 +92,4 @@ def professional_backtest(df, plot_equity=True):
         "Number of Trades": len(trades)
     }
 
-    # =========================
-    # Plot equity
-    # =========================
-    if plot_equity and len(trades) > 0:
-        plt.figure(figsize=(12,6))
-        plt.plot(trades["Sell Time"], trades["Equity"], marker='o')
-        plt.title("Equity Curve")
-        plt.xlabel("Sell Time")
-        plt.ylabel("Equity (Compounded)")
-        plt.grid()
-        plt.tight_layout()
-        plt.savefig("equity_curve.png", dpi=300)
-        plt.close()
-        print("Đã lưu equity_curve.png")
-
     return metrics, trades
